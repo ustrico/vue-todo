@@ -11,12 +11,22 @@ export default {
 </script>
 
 <style>
-#app {
-  font-family: 'Avenir', Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
-}
+  * {
+    -webkit-tap-highlight-color: rgba(0,0,0,0);
+  }
+  html {
+    font: 14px monospace;
+    background: #1e282b;
+    color: #fff;
+  }
+  .show-leave, .show-enter-to {
+    max-height: 100vh;
+    opacity: 1;
+    transform: scaleY(1);
+  }
+  .show-enter, .show-leave-to {
+    max-height: 0;
+    opacity: 0;
+    transform: scaleY(.1);
+  }
 </style>
