@@ -58,7 +58,7 @@
           <div class="todo-dialog-body">
             <div class="todo-form-field">
               <label class="todo-form__label" for="date">Date</label>
-              <input type="text" id="date" class="todo-form__input" v-model="dialog.date">
+              <input type="date" id="date" class="todo-form__input" v-model="dialog.date">
             </div>
             <div class="todo-form-field">
               <label class="todo-form__label" for="name">Name</label>
@@ -168,8 +168,10 @@ export default {
         let ids = Object.keys(this.items)
         id = (ids.length) ? +ids.pop() + 1 : 1
       }
+      let date = Date.parse(this.dialog.date) || null
+      date = date ? new Date(date) : new Date()
       this.$set(this.items, id, {
-        date: new Date(Date.parse(this.dialog.date)),
+        date: date,
         name: this.dialog.name.trim(),
         status: this.dialog.status
       })
@@ -184,7 +186,7 @@ export default {
       this.dialogCloseHandle()
     },
     dialogOverlayHandle (e) {
-      if (~e.srcElement.classList.value.indexOf('todo-dialog_show')) this.dialogCloseHandle()
+      if (e && ~e.srcElement.classList.value.indexOf('todo-dialog_show')) this.dialogCloseHandle()
     }
   },
   created () {
@@ -199,7 +201,7 @@ export default {
 
   .todo {
     max-width: 800px;
-    margin: 2em auto 0;
+    margin: 2em auto 5em;
     outline: 0;
   }
 
@@ -209,11 +211,21 @@ export default {
   }
 
   .todo-row {
-    display: grid;
-    grid-template-columns: 1fr 5fr 2fr 1fr 1fr;
+    display: flex;
     border-bottom: 1px solid rgba(255, 255, 255, .2);
     transition: all .3s ease;
     transform-origin: 50% 0;
+  }
+
+  .todo__item_name {
+    flex-grow: 10;
+  }
+
+  @supports (display: grid) {
+    .todo-row {
+      display: grid;
+      grid-template-columns: 1fr 5fr 2fr 1fr 1fr;
+    }
   }
 
   .todo-row:last-of-type {
@@ -266,6 +278,8 @@ export default {
     background: none;
     font-size: 1.2em;
     line-height: 2em;
+    height: 2em;
+    box-sizing: border-box;
     width: 100%;
     outline: none;
     transition: all .4s ease;
@@ -317,10 +331,19 @@ export default {
   /* add */
 
   .todo-add {
-    position: sticky;
+    position: fixed;
     bottom: 1em;
     margin: 1em 0 0 1em;
     width: 4em;
+  }
+
+  @supports (position: sticky) {
+    .todo-add {
+      position: sticky;
+    }
+    .todo {
+      margin-bottom: 0;
+    }
   }
 
   .todo-add__button {
@@ -507,11 +530,13 @@ export default {
   .todo-dialog {
     background: rgba(0, 0, 0, 0);
     display: flex;
-    position: absolute;
+    position: fixed;
     left: -100vw;
     top: 0;
     width: 100vw;
+    max-width:100%;
     height: 100vh;
+    box-sizing: border-box;
     justify-content: center;
     align-items: center;
     transition: background .5s ease, left 0s linear .5s;
@@ -520,7 +545,7 @@ export default {
   .todo-dialog-window {
     border-radius: 2px;
     min-width: 700px;
-    max-width: 95vw;
+    max-width: 95%;
     background: rgb(60, 66, 66);
     padding: 1em;
     box-sizing: border-box;
@@ -573,18 +598,14 @@ export default {
       display: inherit;
     }
 
-    .todo-row {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-
     .todo-row_th {
       display: none;
     }
 
     .todo-row {
       padding: .5em .5em;
+      flex-wrap: wrap;
+      align-items: center;
     }
 
     .todo__item {
@@ -592,21 +613,20 @@ export default {
     }
 
     .todo__item_actions {
-      flex: 0 1 auto;
       padding-left: 0;
       padding-right: 0;
+      width: 20px;
     }
 
     .todo__item_date {
       order: 1;
-      flex: 5 1 60vw;
       opacity: .6;
       font-size: .8em;
+      flex: 10 0 60vw;
     }
 
     .todo__item_id {
       order: 2;
-      flex: 0 1 10vw;
       text-align: center;
       opacity: .6;
       font-size: .8em;
@@ -614,17 +634,30 @@ export default {
 
     .todo__item_name {
       order: 3;
-      flex: 5 1 60vw;
+      flex: 10 0 60vw;
     }
 
     .todo__item_status {
       order: 4;
-      flex: 0 1 10vw;
       align-self: flex-start;
     }
 
+    @supports (display: grid) {
+      .todo-row {
+        grid-template-columns: auto 10fr 1fr;
+        align-items: center;
+      }
+      .todo__item_name {
+        grid-column: span 2;
+      }
+
+      .todo__item_status {
+        align-self: start;
+      }
+    }
+
     .todo-dialog-window {
-      min-width: 95vw;
+      min-width: 95%;
     }
   }
 </style>
