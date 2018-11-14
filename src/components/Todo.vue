@@ -51,53 +51,106 @@
       </div>
     </div>
 
-    <div class="todo-dialog" :class="{'todo-dialog_show': dialog.show}" @click="dialogOverlayHandle">
-      <div class="todo-dialog-window">
-        <form class="todo-form" @submit.prevent="dialogSaveHandle">
-          <div class="todo-dialog__head" v-html="dialog.id ? 'Edit' : 'Add'"></div>
-          <div class="todo-dialog-body">
-            <div class="todo-form-field">
-              <label class="todo-form__label" for="date">Date</label>
-              <input type="date" id="date" class="todo-form__input" v-model="dialog.date">
-            </div>
-            <div class="todo-form-field">
-              <label class="todo-form__label" for="name">Name</label>
-              <input type="text" id="name" class="todo-form__input" v-model="dialog.name">
-            </div>
-          </div>
-          <div class="todo-dialog-footer">
-            <div class="todo-dialog-footer__trash">
-              <div v-if="dialog.id" class="todo__icon todo__icon_trash" title="Delete"
-                 @click="dialogItemDeleteHandle"></div>
-            </div>
-            <button type="reset" class="todo-button todo-button_mute" @click="dialogCloseHandle">Cancel</button>
-            <button type="submit" class="todo-button">Save</button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <transition-group name="dialog_show">
 
-    <div class="todo-dialog" :class="{'todo-dialog_show': dialog.delete}" @click="dialogOverlayHandle">
-      <div class="todo-dialog-window">
-        <form class="todo-form" @submit.prevent="dialogCloseHandle">
-          <div class="todo-dialog__head">Delete</div>
-          <div class="todo-dialog-body">
-            <p>
-              Delete "{{ dialog.name }}"?
-            </p>
+      <Dialog
+        v-if="dialog.type === 'edit'"
+        :options="dialog"
+        key="edit"
+        type="edit"
+        @close="dialogCloseHandle"
+        @submit="dialogSaveHandle"
+      >
+        <div slot="head" v-html="dialog.id ? 'Edit' : 'Add'"></div>
+        <div class="todo-form-field">
+          <label class="todo-form__label" for="todo-form-date">Date</label>
+          <AButton
+            title="Date"
+            aClass="todo__icon_calendar todo__icon_inputdate"
+            @aClick="dialogItemDatepickerHandle"
+          />
+          <input type="text" id="todo-form-date" class="todo-form__input todo-form__input_date" v-model="dialog.date">
+        </div>
+        <div class="todo-form-field">
+          <label class="todo-form__label" for="todo-form-name">Name</label>
+          <input type="text" id="todo-form-name" class="todo-form__input" v-model="dialog.name">
+        </div>
+        <div slot="footer">
+          <div class="todo-dialog-footer__left" v-if="dialog.id">
+            <AButton
+              title="Delete"
+              aClass="todo__icon_trash"
+              @aClick="dialogItemDeleteHandle"
+            />
           </div>
-          <div class="todo-dialog-footer">
-            <button type="submit" class="todo-button todo-button_mute">Cancel</button>
-            <button class="todo-button" @click.prevent="dialogDeleteHandle">Delete</button>
-          </div>
-        </form>
-      </div>
-    </div>
+          <AButton
+            aClass="todo__button_mute"
+            aValue="Cancel"
+            @aClick="dialogCloseHandle"
+          />
+          <AButton
+            aType="submit"
+            aValue="Save"
+          />
+        </div>
+      </Dialog>
+
+      <Dialog
+        v-if="dialog.type === 'delete'"
+        :options="dialog"
+        key="delete"
+        type="delete"
+        @close="dialogCloseHandle"
+        @submit="dialogDeleteHandle"
+      >
+        <div slot="head">Delete</div>
+        <p>
+          Delete "{{ dialog.name }}"?
+        </p>
+        <div slot="footer">
+          <AButton
+            aClass="todo__button_mute"
+            aValue="Cancel"
+            @aClick="dialogCloseHandle"
+          />
+          <AButton
+            aType="submit"
+            aValue="Delete"
+          />
+        </div>
+      </Dialog>
+
+      <Dialog
+        v-if="dialog.type === 'datepicker'"
+        :options="dialog"
+        key="datepicker"
+        type="datepicker"
+        @close="dialogDatepickerCloseHandle"
+        @submit="dialogCloseHandle"
+      >
+        <div slot="head">Date</div>
+        <Datepicker :options="dialog"/>
+        <div slot="footer">
+          <AButton
+            aClass="todo__button_mute"
+            aValue="Cancel"
+            @aClick="dialogDatepickerCloseHandle"
+          />
+          <AButton
+            aType="submit"
+            aValue="Apply"
+          />
+        </div>
+      </Dialog>
+    </transition-group>
 
   </div>
 </template>
 
 <script>
+import AButton from '@/components/AButton'
+import Dialog from '@/components/Dialog'
+import Datepicker from '@/components/Datepicker'
 export default {
   name: 'Todo',
   data () {
@@ -105,11 +158,11 @@ export default {
       items: {},
       dialog: {
         hide: false,
-        show: false,
-        delete: false
+        type: null
       }
     }
   },
+  components: {Datepicker, AButton, Dialog},
   computed: {
     itemsReverse () {
       let ret = []
@@ -135,32 +188,37 @@ export default {
     itemEditHandle (id = 0) {
       this.dialogAddHandle()
       if (!this.items[id]) return
-      this.$set(this.dialog, 'id', id)
-      this.$set(this.dialog, 'date', this.viewDate(this.items[id].date))
-      this.$set(this.dialog, 'name', this.items[id].name)
+      this.dialog.id = id
+      this.dialog.date = this.viewDate(this.items[id].date)
+      this.dialog.name = this.items[id].name
     },
     itemDeleteHandle (id = 0) {
       if (!this.items[id]) return
-      this.$set(this.dialog, 'id', id)
-      this.$set(this.dialog, 'name', this.items[id].name)
-      this.$set(this.dialog, 'show', false)
-      this.$set(this.dialog, 'delete', true)
+      this.dialog.id = id
+      this.dialog.name = this.items[id].name
+      this.dialog.type = 'delete'
+      setTimeout(() => document.querySelector('[type="button"]').focus(), 500)
     },
     dialogItemDeleteHandle () {
       this.itemDeleteHandle(this.dialog.id)
     },
+    dialogItemDatepickerHandle () {
+      this.dialog.type = 'datepicker'
+    },
+    dialogDatepickerCloseHandle () {
+      this.dialog.type = 'edit'
+    },
     dialogAddHandle () {
-      this.$set(this.dialog, 'id', 0)
-      this.$set(this.dialog, 'date', this.viewDate())
-      this.$set(this.dialog, 'name', '')
-      this.$set(this.dialog, 'status', false)
-      this.$set(this.dialog, 'show', true)
-      document.getElementById('name').focus()
+      this.dialog.id = 0
+      this.dialog.date = this.viewDate()
+      this.dialog.name = ''
+      this.dialog.status = false
+      this.dialog.type = 'edit'
+      setTimeout(() => document.getElementById('todo-form-name').focus(), 500)
     },
     dialogCloseHandle (e = null) {
       if (e) e.preventDefault()
-      this.$set(this.dialog, 'show', false)
-      this.$set(this.dialog, 'delete', false)
+      this.dialog.type = ''
     },
     dialogSaveHandle () {
       let id = this.dialog.id
@@ -184,9 +242,6 @@ export default {
       this.$delete(this.items, id)
       this.lsTodo()
       this.dialogCloseHandle()
-    },
-    dialogOverlayHandle (e) {
-      if (e && ~e.srcElement.classList.value.indexOf('todo-dialog_show')) this.dialogCloseHandle()
     }
   },
   created () {
@@ -262,6 +317,62 @@ export default {
     height: 20px;
   }
 
+  /* icons */
+
+  .todo__icon {
+    user-select: none;
+    outline: none;
+    background: transparent;
+    border: 0;
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    transition: all .4s ease;
+    cursor: pointer;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: 50% 50%;
+    opacity: .7;
+  }
+
+  .todo__icon:hover {
+    opacity: 1;
+  }
+
+  .todo__icon_edit {
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cpath d='M76.7 8.3c-1.1 0-2.1 0.4-2.9 1.2l-7.1 7.1 16.7 16.7 7.1-7.1c1.6-1.6 1.6-4.3 0-5.9L79.7 9.6C78.9 8.7 77.8 8.3 76.7 8.3zM60.4 22.9L20.8 62.5c0 0 4.2 0 6.3 2.1s2 6.2 2 6.2 4.2 0.1 6.3 2.1c2.1 2.1 2.1 6.3 2.1 6.3l39.6-39.6L60.4 22.9zM15.3 70.8L12.5 87.5l16.7-2.8L15.3 70.8z' fill='%23FFFFFF'/%3E%3C/svg%3E");
+  }
+
+  .todo__icon_trash {
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cpath d='M41.7 8.3L37.5 12.5H16.7v8.3h66.7V12.5H62.5l-4.2-4.2H41.7zM20.8 29.2v54.2c0 4.6 3.8 8.3 8.3 8.3h41.7c4.6 0 8.3-3.7 8.3-8.3V29.2H20.8zM33.3 37.5h8.3v45.8h-8.3V37.5zM58.3 37.5h8.3v45.8h-8.3V37.5z' fill='%23ffffff'/%3E%3C/svg%3E");
+  }
+
+  .todo__icon_more {
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 10A2 2 0 0 0 4 12 2 2 0 0 0 6 14 2 2 0 0 0 8 12 2 2 0 0 0 6 10zM12 10A2 2 0 0 0 10 12 2 2 0 0 0 12 14 2 2 0 0 0 14 12 2 2 0 0 0 12 10zM18 10A2 2 0 0 0 16 12 2 2 0 0 0 18 14 2 2 0 0 0 20 12 2 2 0 0 0 18 10z' fill='%23ffffff'/%3E%3C/svg%3E");
+  }
+
+  .todo__icon_calendar {
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 1L6 3 5 3C3.9 3 3 3.9 3 5L3 19C3 20.1 3.9 21 5 21L19 21C20.1 21 21 20.1 21 19L21 5C21 3.9 20.1 3 19 3L18 3 18 1 16 1 16 3 8 3 8 1 6 1zM5 8L19 8 19 19 5 19 5 8z' fill='%23ffffff'/%3E%3C/svg%3E");
+  }
+
+  .todo__icon_morev {
+    transform: rotate(90deg);
+  }
+
+  .todo__icon_add {
+    opacity: 1;
+  }
+
+  .todo__icon_add:before {
+    content: '+';
+    color: #fff;
+    font-size: 1.2em;
+  }
+
   /* form */
 
   .todo-form__label {
@@ -294,38 +405,14 @@ export default {
     margin-top: 2em;
   }
 
-  /* button */
-
-  .todo-button {
-    color: rgba(0, 200, 170, 1);
-    user-select: none;
-    border-radius: 2px;
-    font-weight: 700;
-    text-transform: uppercase;
-    margin: 0;
-    padding: .5em 1em;
-    display: inline-block;
-    overflow: hidden;
-    outline: none;
-    background: transparent;
-    border: 0;
-    transition: all .4s ease;
-    text-decoration: none;
-    white-space: nowrap;
-    min-width: 70px;
-    box-sizing: border-box;
+  .todo__icon_inputdate {
+    position: absolute;
+    height: 2em;
+    margin-top: .2em;
   }
 
-  .todo-button:not([disabled]) {
-    cursor: pointer;
-  }
-
-  .todo-button:hover, .todo-button:active {
-    background-color: rgba(255, 255, 255, .1);
-  }
-
-  .todo-button_mute {
-    color: rgba(255, 255, 255, .5);
+  .todo-form__input_date {
+    padding-left: 30px;
   }
 
   /* add */
@@ -480,109 +567,6 @@ export default {
     background-color: rgba(0, 200, 170, 1);
   }
 
-  /* icons */
-
-  .todo__icon {
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    transition: all .4s ease;
-    cursor: pointer;
-    background-size: contain;
-    opacity: .7;
-  }
-
-  .todo__icon:hover {
-    opacity: 1;
-  }
-
-  .todo__icon_edit {
-    background-image:
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cpath d='M76.7 8.3c-1.1 0-2.1 0.4-2.9 1.2l-7.1 7.1 16.7 16.7 7.1-7.1c1.6-1.6 1.6-4.3 0-5.9L79.7 9.6C78.9 8.7 77.8 8.3 76.7 8.3zM60.4 22.9L20.8 62.5c0 0 4.2 0 6.3 2.1s2 6.2 2 6.2 4.2 0.1 6.3 2.1c2.1 2.1 2.1 6.3 2.1 6.3l39.6-39.6L60.4 22.9zM15.3 70.8L12.5 87.5l16.7-2.8L15.3 70.8z' fill='%23FFFFFF'/%3E%3C/svg%3E");
-  }
-
-  .todo__icon_trash {
-    background-image:
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cpath d='M41.7 8.3L37.5 12.5H16.7v8.3h66.7V12.5H62.5l-4.2-4.2H41.7zM20.8 29.2v54.2c0 4.6 3.8 8.3 8.3 8.3h41.7c4.6 0 8.3-3.7 8.3-8.3V29.2H20.8zM33.3 37.5h8.3v45.8h-8.3V37.5zM58.3 37.5h8.3v45.8h-8.3V37.5z' fill='%23ffffff'/%3E%3C/svg%3E");
-  }
-
-  .todo__icon_more {
-    background-image:
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 10A2 2 0 0 0 4 12 2 2 0 0 0 6 14 2 2 0 0 0 8 12 2 2 0 0 0 6 10zM12 10A2 2 0 0 0 10 12 2 2 0 0 0 12 14 2 2 0 0 0 14 12 2 2 0 0 0 12 10zM18 10A2 2 0 0 0 16 12 2 2 0 0 0 18 14 2 2 0 0 0 20 12 2 2 0 0 0 18 10z' fill='%23ffffff'/%3E%3C/svg%3E");
-  }
-
-  .todo__icon_morev {
-    transform: rotate(90deg);
-  }
-
-  .todo__icon_add {
-    opacity: 1;
-  }
-
-  .todo__icon_add:before {
-    content: '+';
-    color: #fff;
-    font-size: 1.2em;
-  }
-
-  /* dialog */
-
-  .todo-dialog {
-    background: rgba(0, 0, 0, 0);
-    display: flex;
-    position: fixed;
-    left: -100vw;
-    top: 0;
-    width: 100vw;
-    max-width:100%;
-    height: 100vh;
-    box-sizing: border-box;
-    justify-content: center;
-    align-items: center;
-    transition: background .5s ease, left 0s linear .5s;
-  }
-
-  .todo-dialog-window {
-    border-radius: 2px;
-    min-width: 700px;
-    max-width: 95%;
-    background: rgb(60, 66, 66);
-    padding: 1em;
-    box-sizing: border-box;
-    transform: scale(.5);
-    opacity: 0;
-    transition: all .2s ease;
-    box-shadow: 0 20px 30px rgba(0, 0, 0, .5);
-  }
-
-  .todo-dialog__head {
-    font-weight: 700;
-    font-size: 2em;
-    margin-bottom: 1rem;
-  }
-
-  .todo-dialog-footer {
-    margin-top: 2rem;
-    justify-content: flex-end;
-    display: flex;
-  }
-
-  .todo-dialog-footer__trash {
-    flex: 5 1;
-  }
-
-  .todo-dialog_show {
-    left: 0;
-    transition: background .5s ease;
-    background: rgba(0, 0, 0, .6);
-  }
-
-  .todo-dialog_show .todo-dialog-window {
-    transform: scale(1);
-    opacity: 1;
-    transition: all .2s ease .3s;
-  }
-
   /* media */
 
   .sm_visible {
@@ -654,10 +638,6 @@ export default {
       .todo__item_status {
         align-self: start;
       }
-    }
-
-    .todo-dialog-window {
-      min-width: 95%;
     }
   }
 </style>
